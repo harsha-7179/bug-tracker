@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <div class="item-header">
+        <h2>{{ group.name }}</h2>
+        {% if is_leader %}
+            <span style="color: #28a745; font-weight: bold;">👑 Leader</span>
+        {% endif %}
+    </div>
+    
+    {% if group.description %}
+        <p>{{ group.description }}</p>
+    {% endif %}
+    
+    <div class="tabs">
+        <button class="tab active" onclick="showTab(event, 'overview')">Overview</button>
+        <button class="tab" onclick="showTab(event, 'bugs')">Bugs</button>
+        <button class="tab" onclick="showTab(event, 'suggestions')">Suggestions</button>
+    </div>
+
+    <!-- Overview Tab -->
+    <div id="overview" class="tab-content active">
+        <div class="grid grid-2">
+            <!-- Members Section -->
+            <div class="card">
+                <h3>Group Members ({{ members|length }})</h3>
+                <ul style="list-style: none;">
+                    {% for member in members %}
+                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #eee;">
+                        {{ member.username }}
+                        {% if member.is_leader %}
+                            <span style="color: #28a745;">(Leader)</span>
+                        {% endif %}
+                        <span class="file-info">Joined: {{ member.joined_at[:10] }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                
+                {% if is_leader %}
+                    <form method="POST" action="{{ url_for('invite_user', group_id=group.id) }}" style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <label for="username">Invite User by Username:</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="text" name="username" placeholder="Enter username" required style="flex: 1;">
+                                <button type="submit" class="btn">Invite</button>
+                            </div>
+                        </div>
+                    </form>
+                {% endif %}
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="card">
+                <h3>Statistics</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 2rem; font-weight: bold; color: #667eea;">{{ bugs|length }}</div>
+                        <div>Total Bugs</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 2rem; font-weight: bold; color: #28a745;">{{ bugs|selectattr('status', 'equalto', 'approved')|list|length }}</div>
+                        <div>Approved</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 2rem; font-weight: bold; color: #667eea;">{{ suggestions|length }}</div>
+                        <div>Suggestions</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 2rem; font-weight: bold; color: #28a745;">{{ suggestions|selectattr('status', 'equalto', 'approved')|list|length }}</div>
+                        <div>Approved</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bugs Tab -->
+    <div id="bugs" class="tab-content">
+        <div class="item-header">
+            <h3>Bug Reports</h3>
+        </div>
+        
+        <!-- Bug Report Form -->
+        <div class="card">
+            <h4>Report New Bug</h4>
+            <form method="POST" action="{{ url_for('upload_bug', group_id=group.id) }}" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="bug_title">Title:</label>
+                    <input type="text" id="bug_title" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="bug_description">Description:</label>
+                    <textarea id="bug_description" name="description" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="file">Attachment (optional):</label>
+                    <input type="file" id="file" name="file" accept=".png,.jpg,.jpeg,.gif,.mp4,.mov,.avi,.txt,.pdf">
+                    <small style="color: #666;">Supported: Images, Videos, Text files, PDFs (Max 16MB)</small>
+                </div>
+                <button type="submit" class="btn">Submit Bug Report</button>
+            </form>
+        </div>
+
+        <!-- Bug List -->
+        {% if bugs %}
+            {% for bug in bugs %}
+            <div class="card">
+                <div class="item-header">
+                    <h4>{{ bug.title }}</h4>
+                    <div class="item-actions">
+                        <span class="status-{{ bug.status }}">{{ bug.status.upper() }}</span>
+                        {% if is_leader and bug.status == 'pending' %}
+                            <a href="{{ url_for('approve_bug', bug_id=bug.id) }}" class="btn btn-success">Approve</a>
+                        {% endif %}
+                    </div>
+                </div>
+                <p>{{ bug.description }}</p>
+                {% if bug.file_path %}
+                    <div class="file-info">
+                        📎 <a href="{{ url_for('static', filename=bug.file_path) }}" target="_blank">{{ bug.file_name }}</a>
+                    </div>
+                {% endif %}
+                <div class="file-info">
+                    Reported by {{ bug.reporter_name }} on {{ bug.created_at[:16] }}
+                    {% if bug.approved_at %}
+                        | Approved on {{ bug.approved_at[:16] }}
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>No bug reports yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Suggestions Tab -->
+    <div id="suggestions" class="tab-content">
+        <div class="item-header">
+            <h3>Suggestions</h3>
+        </div>
+        
+        <!-- Suggestion Form -->
+        <div class="card">
+            <h4>Submit New Suggestion</h4>
+            <form method="POST" action="{{ url_for('submit_suggestion', group_id=group.id) }}">
+                <div class="form-group">
+                    <label for="suggestion_title">Title:</label>
+                    <input type="text" id="suggestion_title" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="suggestion_description">Description:</label>
+                    <textarea id="suggestion_description" name="description" rows="3" required></textarea>
+                </div>
+                <button type="submit" class="btn">Submit Suggestion</button>
+            </form>
+        </div>
+
+        <!-- Suggestions List -->
+        {% if suggestions %}
+            {% for suggestion in suggestions %}
+            <div class="card">
+                <div class="item-header">
+                    <h4>{{ suggestion.title }}</h4>
+                    <div class="item-actions">
+                        <span class="status-{{ suggestion.status }}">{{ suggestion.status.upper() }}</span>
+                        {% if is_leader and suggestion.status == 'pending' %}
+                            <a href="{{ url_for('approve_suggestion', suggestion_id=suggestion.id) }}" class="btn btn-success">Approve</a>
+                            <a href="{{ url_for('reject_suggestion', suggestion_id=suggestion.id) }}" class="btn btn-danger">Reject</a>
+                        {% endif %}
+                    </div>
+                </div>
+                <p>{{ suggestion.description }}</p>
+                <div class="file-info">
+                    Suggested by {{ suggestion.author_name }} on {{ suggestion.created_at[:16] }}
+                    {% if suggestion.reviewed_at %}
+                        | Reviewed on {{ suggestion.reviewed_at[:16] }}
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>No suggestions yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

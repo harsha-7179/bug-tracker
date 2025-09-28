@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <div class="item-header">
+        <h2>My Groups</h2>
+        <a href="{{ url_for('create_group') }}" class="btn">Create New Group</a>
+    </div>
+    
+    {% if groups %}
+        <div class="grid grid-3">
+            {% for group in groups %}
+            <div class="card">
+                <h3>{{ group.name }}</h3>
+                <p>{{ group.description or 'No description' }}</p>
+                <div class="file-info">
+                    <strong>Leader:</strong> {{ group.leader_name }}
+                    {% if group.is_leader %}<span style="color: #28a745;">(You)</span>{% endif %}
+                </div>
+                <div style="margin-top: 1rem;">
+                    <a href="{{ url_for('group_detail', group_id=group.id) }}" class="btn">View Group</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>You're not a member of any groups yet. <a href="{{ url_for('create_group') }}">Create your first group</a>!</p>
+    {% endif %}
+</div>
+{% endblock %}
