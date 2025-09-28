@@ -2,14 +2,17 @@
 {% block content %}
 <div class="card">
     <div class="item-header">
-        <h2>{{ group.name }}</h2>
-        {% if is_leader %}
-            <span style="color: #28a745; font-weight: bold;">👑 Leader</span>
-        {% endif %}
+        <div>
+            <h2>{{ group.name }}</h2>
+            {% if is_leader %}
+                <span class="status-approved" style="margin-top: 0.5rem;">👑 Leader</span>
+            {% endif %}
+        </div>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
     </div>
     
     {% if group.description %}
-        <p>{{ group.description }}</p>
+        <p style="color: #666; margin-bottom: 2rem;">{{ group.description }}</p>
     {% endif %}
     
     <div class="tabs">
@@ -24,27 +27,39 @@
             <!-- Members Section -->
             <div class="card">
                 <h3>Group Members ({{ members|length }})</h3>
-                <ul style="list-style: none;">
+                <div style="max-height: 400px; overflow-y: auto;">
                     {% for member in members %}
-                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #eee;">
-                        {{ member.username }}
-                        {% if member.is_leader %}
-                            <span style="color: #28a745;">(Leader)</span>
+                    <div style="padding: 1rem 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>{{ member.username }}</strong>
+                            {% if member.is_leader %}
+                                <span class="status-approved" style="font-size: 0.8rem; margin-left: 0.5rem;">Leader</span>
+                            {% endif %}
+                            <div class="file-info">Joined: {{ member.joined_at[:10] }}</div>
+                        </div>
+                        {% if is_leader and not member.is_leader and member.username != session.username %}
+                            <a href="{{ url_for('make_leader', group_id=group.id, user_id=member.user_id) }}" 
+                               class="btn btn-small btn-success" 
+                               onclick="return confirm('Make {{ member.username }} a leader?')">
+                                Make Leader
+                            </a>
                         {% endif %}
-                        <span class="file-info">Joined: {{ member.joined_at[:10] }}</span>
-                    </li>
+                    </div>
                     {% endfor %}
-                </ul>
+                </div>
                 
                 {% if is_leader %}
-                    <form method="POST" action="{{ url_for('invite_user', group_id=group.id) }}" style="margin-top: 1rem;">
+                    <form method="POST" action="{{ url_for('invite_user', group_id=group.id) }}" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #eee;">
+                        <h4 style="margin-bottom: 1rem;">Invite User</h4>
                         <div class="form-group">
-                            <label for="username">Invite User by Username:</label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="text" name="username" placeholder="Enter username" required style="flex: 1;">
-                                <button type="submit" class="btn">Invite</button>
-                            </div>
+                            <label for="username">Username:</label>
+                            <input type="text" name="username" placeholder="Enter username" required>
                         </div>
+                        <div class="form-group">
+                            <label for="message">Invitation Message (optional):</label>
+                            <textarea name="message" placeholder="Add a personal message..." rows="2"></textarea>
+                        </div>
+                        <button type="submit" class="btn">Send Invitation</button>
                     </form>
                 {% endif %}
             </div>
@@ -52,22 +67,41 @@
             <!-- Quick Stats -->
             <div class="card">
                 <h3>Statistics</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div style="text-align: center;">
-                        <div style="font-size: 2rem; font-weight: bold; color: #667eea;">{{ bugs|length }}</div>
-                        <div>Total Bugs</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-number">{{ bugs|length }}</span>
+                        <div class="stat-label">Total Bugs</div>
                     </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 2rem; font-weight: bold; color: #28a745;">{{ bugs|selectattr('status', 'equalto', 'approved')|list|length }}</div>
-                        <div>Approved</div>
+                    <div class="stat-item">
+                        <span class="stat-number" style="color: #28a745;">{{ bugs|selectattr('status', 'equalto', 'approved')|list|length }}</span>
+                        <div class="stat-label">Approved</div>
                     </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 2rem; font-weight: bold; color: #667eea;">{{ suggestions|length }}</div>
-                        <div>Suggestions</div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ suggestions|length }}</span>
+                        <div class="stat-label">Suggestions</div>
                     </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 2rem; font-weight: bold; color: #28a745;">{{ suggestions|selectattr('status', 'equalto', 'approved')|list|length }}</div>
-                        <div>Approved</div>
+                    <div class="stat-item">
+                        <span class="stat-number" style="color: #28a745;">{{ suggestions|selectattr('status', 'equalto', 'approved')|list|length }}</span>
+                        <div class="stat-label">Approved</div>
+                    </div>
+                </div>
+                
+                <!-- Priority Breakdown -->
+                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #eee;">
+                    <h4>Bug Priority Breakdown</h4>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number priority-high">{{ bugs|selectattr('priority', 'equalto', 'high')|list|length }}</span>
+                            <div class="stat-label">High Priority</div>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number priority-medium">{{ bugs|selectattr('priority', 'equalto', 'medium')|list|length }}</span>
+                            <div class="stat-label">Medium Priority</div>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number priority-low">{{ bugs|selectattr('priority', 'equalto', 'low')|list|length }}</span>
+                            <div class="stat-label">Low Priority</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -84,13 +118,23 @@
         <div class="card">
             <h4>Report New Bug</h4>
             <form method="POST" action="{{ url_for('upload_bug', group_id=group.id) }}" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label for="bug_title">Title:</label>
-                    <input type="text" id="bug_title" name="title" required>
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label for="bug_title">Title:</label>
+                        <input type="text" id="bug_title" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="priority">Priority:</label>
+                        <select id="priority" name="priority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="bug_description">Description:</label>
-                    <textarea id="bug_description" name="description" rows="3" required></textarea>
+                    <textarea id="bug_description" name="description" rows="4" required placeholder="Describe the bug in detail..."></textarea>
                 </div>
                 <div class="form-group">
                     <label for="file">Attachment (optional):</label>
@@ -106,30 +150,47 @@
             {% for bug in bugs %}
             <div class="card">
                 <div class="item-header">
-                    <h4>{{ bug.title }}</h4>
+                    <div>
+                        <h4>{{ bug.title }}</h4>
+                        <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem;">
+                            <span class="priority-{{ bug.priority }}">{{ bug.priority.upper() }} PRIORITY</span>
+                            <span class="status-{{ bug.status }}">{{ bug.status.upper() }}</span>
+                        </div>
+                    </div>
                     <div class="item-actions">
-                        <span class="status-{{ bug.status }}">{{ bug.status.upper() }}</span>
+                        {% if bug.reporter_id == session.user_id or is_leader %}
+                            <a href="{{ url_for('edit_bug', bug_id=bug.id) }}" class="btn btn-small btn-secondary">Edit</a>
+                        {% endif %}
                         {% if is_leader and bug.status == 'pending' %}
-                            <a href="{{ url_for('approve_bug', bug_id=bug.id) }}" class="btn btn-success">Approve</a>
+                            <a href="{{ url_for('approve_bug', bug_id=bug.id) }}" 
+                               class="btn btn-small btn-success"
+                               onclick="return confirm('Approve this bug report?')">Approve</a>
                         {% endif %}
                     </div>
                 </div>
-                <p>{{ bug.description }}</p>
+                <p style="margin: 1rem 0;">{{ bug.description }}</p>
                 {% if bug.file_path %}
-                    <div class="file-info">
+                    <div class="file-info" style="margin-bottom: 1rem;">
                         📎 <a href="{{ url_for('static', filename=bug.file_path) }}" target="_blank">{{ bug.file_name }}</a>
                     </div>
                 {% endif %}
                 <div class="file-info">
-                    Reported by {{ bug.reporter_name }} on {{ bug.created_at[:16] }}
+                    <div>Reported by <strong>{{ bug.reporter_name }}</strong> on {{ bug.created_at[:16] }}</div>
                     {% if bug.approved_at %}
-                        | Approved on {{ bug.approved_at[:16] }}
+                        <div>Approved by <strong>{{ bug.approved_by_name }}</strong> on {{ bug.approved_at[:16] }}</div>
+                    {% endif %}
+                    {% if bug.last_edited %}
+                        <div>Last edited: {{ bug.last_edited[:16] }}</div>
                     {% endif %}
                 </div>
             </div>
             {% endfor %}
         {% else %}
-            <p>No bug reports yet.</p>
+            <div style="text-align: center; padding: 3rem; color: #666;">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">🐛</div>
+                <h3>No Bug Reports Yet</h3>
+                <p>Be the first to report a bug!</p>
+            </div>
         {% endif %}
     </div>
 
@@ -149,7 +210,7 @@
                 </div>
                 <div class="form-group">
                     <label for="suggestion_description">Description:</label>
-                    <textarea id="suggestion_description" name="description" rows="3" required></textarea>
+                    <textarea id="suggestion_description" name="description" rows="4" required placeholder="Describe your suggestion in detail..."></textarea>
                 </div>
                 <button type="submit" class="btn">Submit Suggestion</button>
             </form>
@@ -164,22 +225,30 @@
                     <div class="item-actions">
                         <span class="status-{{ suggestion.status }}">{{ suggestion.status.upper() }}</span>
                         {% if is_leader and suggestion.status == 'pending' %}
-                            <a href="{{ url_for('approve_suggestion', suggestion_id=suggestion.id) }}" class="btn btn-success">Approve</a>
-                            <a href="{{ url_for('reject_suggestion', suggestion_id=suggestion.id) }}" class="btn btn-danger">Reject</a>
+                            <a href="{{ url_for('approve_suggestion', suggestion_id=suggestion.id) }}" 
+                               class="btn btn-small btn-success"
+                               onclick="return confirm('Approve this suggestion?')">Approve</a>
+                            <a href="{{ url_for('reject_suggestion', suggestion_id=suggestion.id) }}" 
+                               class="btn btn-small btn-danger"
+                               onclick="return confirm('Reject this suggestion?')">Reject</a>
                         {% endif %}
                     </div>
                 </div>
-                <p>{{ suggestion.description }}</p>
+                <p style="margin: 1rem 0;">{{ suggestion.description }}</p>
                 <div class="file-info">
-                    Suggested by {{ suggestion.author_name }} on {{ suggestion.created_at[:16] }}
+                    <div>Suggested by <strong>{{ suggestion.author_name }}</strong> on {{ suggestion.created_at[:16] }}</div>
                     {% if suggestion.reviewed_at %}
-                        | Reviewed on {{ suggestion.reviewed_at[:16] }}
+                        <div>Reviewed by <strong>{{ suggestion.reviewed_by_name }}</strong> on {{ suggestion.reviewed_at[:16] }}</div>
                     {% endif %}
                 </div>
             </div>
             {% endfor %}
         {% else %}
-            <p>No suggestions yet.</p>
+            <div style="text-align: center; padding: 3rem; color: #666;">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">💡</div>
+                <h3>No Suggestions Yet</h3>
+                <p>Share your ideas to improve the project!</p>
+            </div>
         {% endif %}
     </div>
 </div>
